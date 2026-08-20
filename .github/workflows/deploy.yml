@@ -1,4 +1,4 @@
-name: Career Backend CI/CD
+name: Career Counselling Backend CI/CD
 
 on:
   push:
@@ -21,7 +21,7 @@ jobs:
   # ============================================================
 
   build-and-push:
-    name: Build and Push Docker Image
+    name: Build and Push Backend Image
     runs-on: ubuntu-latest
 
     steps:
@@ -54,7 +54,7 @@ jobs:
   # ============================================================
 
   deploy:
-    name: Deploy to VPS
+    name: Deploy Backend to VPS
     runs-on: ubuntu-latest
 
     needs:
@@ -74,10 +74,10 @@ jobs:
             set -e
 
             echo "======================================"
-            echo "Starting Career Backend Deployment"
+            echo "Starting Career Counselling Backend"
             echo "======================================"
 
-            cd /root/career-ai
+            cd /root/career-counselling-backend
 
             echo "Logging into GHCR..."
 
@@ -85,24 +85,77 @@ jobs:
               -u "${{ secrets.GHCR_USERNAME }}" \
               --password-stdin
 
-            echo "Pulling new Docker image..."
+            echo "Pulling new backend image..."
 
             export IMAGE_TAG=${{ github.sha }}
 
             docker compose pull
 
-            echo "Starting updated container..."
+            echo "New image pulled successfully."
 
-            docker compose up -d
+            echo "Checking old backend..."
+
+            if docker ps -q --filter "name=^career-ai-backend$" | grep -q .; then
+              echo "Stopping old career-ai-backend..."
+
+              docker stop career-ai-backend
+            fi
+
+            echo "Starting career-counselling-backend..."
+
+            if docker compose up -d; then
+              echo "New backend container started."
+            else
+              echo "New backend failed to start."
+              echo "Starting old backend..."
+
+              docker start career-ai-backend || true
+
+              exit 1
+            fi
+
+            echo "Waiting for backend to start..."
+
+            sleep 10
+
+            echo "Checking container status..."
+
+            if docker ps -q --filter "name=^career-counselling-backend$" | grep -q .; then
+              echo "career-counselling-backend is running."
+            else
+              echo "career-counselling-backend is NOT running."
+
+              echo "Rolling back to old backend..."
+
+              docker compose down || true
+              docker start career-ai-backend || true
+
+              exit 1
+            fi
+
+            echo "Testing backend..."
+
+            if curl -fsS http://127.0.0.1:6767/docs > /dev/null; then
+              echo "Backend health check passed."
+            else
+              echo "Backend health check FAILED."
+
+              echo "Rolling back to old backend..."
+
+              docker compose down || true
+              docker start career-ai-backend || true
+
+              exit 1
+            fi
 
             echo "Cleaning unused Docker images..."
 
             docker image prune -f
 
             echo "======================================"
-            echo "Deployment completed"
+            echo "Deployment completed successfully"
             echo "======================================"
 
             echo "Container status:"
 
-            docker ps --filter "name=career-ai-backend"
+            docker ps --filter "name=career-counselling-backend"

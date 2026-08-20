@@ -1,17 +1,11 @@
 services:
   backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: career-ai-backend
+    image: ghcr.io/grid-sphere/career-counselling-backend:${IMAGE_TAG:-latest}
+    container_name: career-counselling-backend
     restart: always
-    environment:
-      # We will put the real keys directly in Hostinger!
-      - DATABASE_URL=postgresql://grid:strongpassword@187.127.139.208:5432/career
-      - DEEPSEEK_API_KEY=add_in_hostinger
-      - GROQ_API_KEY=add_in_hostinger
-      - SECRET_KEY=09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7
-      - ALGORITHM=HS256
-      - ACCESS_TOKEN_EXPIRE_MINUTES=1440
+
+    env_file:
+      - /root/career-counselling-backend/.env
+
     ports:
-      - "8000:8000"
+      - "6767:8000"

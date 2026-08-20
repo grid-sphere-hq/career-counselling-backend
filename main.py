@@ -59,6 +59,7 @@ app = FastAPI(
 
 # CORS configuration for React frontend
 origins = [
+    "https://career.carawintech.com",
     "http://187.127.139.208:5173",  # Your VPS Frontend
     "http://localhost:5173"         # Keep this if you still code locally
 ]

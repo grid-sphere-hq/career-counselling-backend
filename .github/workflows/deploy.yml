@@ -114,10 +114,6 @@ jobs:
               exit 1
             fi
 
-            echo "Waiting for backend to start..."
-
-            sleep 10
-
             echo "Checking container status..."
 
             if docker ps -q --filter "name=^career-counselling-backend$" | grep -q .; then
@@ -125,20 +121,9 @@ jobs:
             else
               echo "career-counselling-backend is NOT running."
 
-              echo "Rolling back to old backend..."
+              echo "Recent backend logs:"
 
-              docker compose down || true
-              docker start career-ai-backend || true
-
-              exit 1
-            fi
-
-            echo "Testing backend..."
-
-            if curl -fsS http://127.0.0.1:6767/docs > /dev/null; then
-              echo "Backend health check passed."
-            else
-              echo "Backend health check FAILED."
+              docker logs career-counselling-backend --tail 100 || true
 
               echo "Rolling back to old backend..."
 
@@ -147,6 +132,36 @@ jobs:
 
               exit 1
             fi
+
+            echo "Waiting for backend to become ready..."
+
+            for i in {1..30}; do
+
+              if curl -fsS http://127.0.0.1:6767/docs > /dev/null; then
+                echo "Backend health check passed."
+                break
+              fi
+
+              echo "Backend not ready yet... attempt $i/30"
+
+              sleep 5
+
+              if [ "$i" -eq 30 ]; then
+                echo "Backend failed to become ready."
+
+                echo "Recent backend logs:"
+
+                docker logs career-counselling-backend --tail 100 || true
+
+                echo "Rolling back to old backend..."
+
+                docker compose down || true
+                docker start career-ai-backend || true
+
+                exit 1
+              fi
+
+            done
 
             echo "Cleaning unused Docker images..."
 
